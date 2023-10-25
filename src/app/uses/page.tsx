@@ -49,7 +49,7 @@ export default function Uses() {
     >
       <div className="space-y-20">
         <ToolsSection title="Workstation" space="space-y-8">
-          <Tool title="14” MacBook Pro, M2 Pro, 64GB RAM (2023)">
+          <Tool title="14” MacBook Pro, M2 Pro, 32GB RAM (2023)">
             I just love the M chip, it’s so fast for development workloads and
             stays silent pretty much all the time.
           </Tool>
