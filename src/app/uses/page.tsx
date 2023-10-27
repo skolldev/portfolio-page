@@ -63,10 +63,6 @@ export default function Uses() {
             Well.. It’s a mouse. Good battery, connects quickly. Does mouse
             things. Recommend!
           </Tool>
-          <Tool title="Herman Miller Aeron Chair">
-            If I’m going to slouch in the worst ergonomic position imaginable
-            all day, I might as well do it in an expensive chair.
-          </Tool>
           <Tool title="Fully Jarvis Standing Desk">
             I think they’ve been bought my HermanMiller, so maybe it’s a
             HermanMiller Jarvis now? Anyway - it’s got programmable heights and
