@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: 'Alexander May - Software engineering, lifting and motorcycles',
   },
   description:
-    'I’m Alex, a software designer and entrepreneur based in New York City. I’m the founder and CEO of Planetaria, where we develop technologies that empower regular people to explore space on their own terms.',
+    'I’m Alex, a passionate software engineer and fitness enthusiast. I’ve spent the last 7 years developing applications in a broad range of domains, ranging from Automotive to EdTech. ',
   alternates: {
     types: {
       'application/rss+xml': `${process.env.NEXT_PUBLIC_SITE_URL}/feed.xml`,
