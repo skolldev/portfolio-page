@@ -3,6 +3,7 @@ import Image from 'next/image'
 
 import { SimpleLayout } from '@/components/SimpleLayout'
 import googleCyberSecurityLogo from '@/images/logos/google_cybersecurity.png'
+import securityPlus from '@/images/logos/security_plus.png'
 
 function LinkIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
   return (
@@ -107,11 +108,12 @@ export default function Projects() {
         </div>
       ))}
       <h2 className="mb-2 text-xl font-medium">Certificates</h2>
-      <ul className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6">
+      <ul className="grid grid-cols-1 items-center md:grid-cols-3 lg:grid-cols-6">
         <Image
           src={googleCyberSecurityLogo}
           alt="Google Cybersecurity Certificate"
         />
+        <Image src={securityPlus} alt="CompTIA Security+" />
       </ul>
     </SimpleLayout>
   )
