@@ -87,12 +87,13 @@ export default function Uses() {
         </ToolsSection>
         <ToolsSection title="Desktop" space="space-y-4">
           <Tool title="Fractal Design North" />
-          <Tool title="AMD Ryzen 5800X" />
+          <Tool title="AMD Ryzen 7 7800X3D" />
           <Tool title="Thermalright Peerless Assassin 120 SE" />
           <Tool title="XFX Speedster MERC Radeon RX 7900 XT" />
-          <Tool title="Gigabyte X570 Aorus Elite" />
-          <Tool title="4x Corsair Vengeance RGB 8GB" />
-          <Tool title="Samsung 990 Pro 2TB" />
+          <Tool title="Gigabyte B650 Aorus Elite AX" />
+          <Tool title="2x G.SKILL Trident Z Neo 32GB" />
+          <Tool title="Samsung 990 EVOPro 2TB" />
+          <Tool title="Samsung 970 EVO Plus 500GB" />
           <Tool title="Crucial MX500 2TB" />
           <Tool title="Corsair RM850x" />
         </ToolsSection>
