@@ -16,6 +16,7 @@ import logoKratzer from '@/images/logos/kratzer.jpeg'
 import logoSpendit from '@/images/logos/spendit.jpeg'
 import logoStudySmarter from '@/images/logos/studysmarter.jpeg'
 import logoXibix from '@/images/logos/xibix.jpeg'
+import logoCodecentric from '@/images/logos/codecentric_ag_logo.jpg'
 
 import { type ArticleWithSlug, getAllArticles } from '@/lib/articles'
 import { formatDate } from '@/lib/formatDate'
@@ -158,12 +159,22 @@ function Role({ role }: { role: Role }) {
 function Resume() {
   let resume: Array<Role> = [
     {
+      company: 'codecentric AG',
+      title: 'IT Consultant',
+      logo: logoCodecentric,
+      start: '2024',
+      end: {
+        label: 'present',
+        dateTime: new Date().getFullYear().toString(),
+      },
+    },
+    {
       company: 'Xibix Solutions GmbH',
       title: 'Senior Frontend Engineer',
       logo: logoXibix,
       start: '2023',
       end: {
-        label: 'Present',
+        label: '2024',
         dateTime: new Date().getFullYear().toString(),
       },
     },

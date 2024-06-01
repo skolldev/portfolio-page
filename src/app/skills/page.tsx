@@ -36,6 +36,8 @@ const skills = [
       'Angular Material',
       'Typescript',
       'Javascript',
+      'Stencil',
+      'Storybook',
       'NgRx',
       'RxJS',
       'Jest',
